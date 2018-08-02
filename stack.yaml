@@ -1,0 +1,9 @@
+resolver: lts-12.4
+packages:
+  - .
+extra-deps:
+  - bindings-levmar-1.1.0.5
+
+# BLAS and LAPACK linear algebra C libraries required by levmar, from https://icl.cs.utk.edu/lapack-for-windows/lapack/#libraries_mingw
+extra-include-dirs: [lib/]
+extra-lib-dirs: [lib/]
