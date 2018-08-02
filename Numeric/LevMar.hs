@@ -57,8 +57,16 @@ import Data.Functor          ( (<$>) )
 import Data.Int              ( Int )
 import Data.List             ( lookup, (++) )
 import Data.Maybe            ( Maybe(Nothing, Just), isJust, fromJust, fromMaybe )
-import Data.Monoid           ( Monoid, mempty, mappend )
 import Data.Ord              ( Ord, (<) )
+
+#if MIN_VERSION_base(4,9,0)
+import Data.Monoid           ( Monoid, mempty)
+-- Data.Semigroup was added in base-4.9
+import qualified Data.Semigroup as Sem
+#else
+import Data.Monoid           ( Monoid, mempty, mappend )
+#endif
+
 import Foreign.C.Types       ( CInt )
 import Foreign.Marshal.Array ( allocaArray, withArray, peekArray, copyArray )
 import Foreign.Ptr           ( Ptr, nullPtr )
@@ -478,14 +486,31 @@ type LinearConstraints r = (Matrix r, Vector r)
 --
 --   * 'mappend' merges two 'Constraints' by taking the first non-'Nothing' value
 --     for each field.
+-- The changes regarding the newer base package were taken from https://github.com/hspec/hspec/pull/342
+
+appendConstraints :: Constraints r -> Constraints r -> Constraints r
+appendConstraints (Constraints lb1 ub1 w1 l1)
+                  (Constraints lb2 ub2 w2 l2) = Constraints (lb1 `mplus` lb2)
+                                                            (ub1 `mplus` ub2)
+                                                            (w1  `mplus` w2)
+                                                            (l1  `mplus` l2)
+
+#if MIN_VERSION_base(4,9,0)
+instance Sem.Semigroup (Constraints r) where
+  (<>) = appendConstraints
+#endif
+
 instance Monoid (Constraints r) where
     mempty = Constraints Nothing Nothing Nothing Nothing
-    mappend (Constraints lb1 ub1 w1 l1)
-            (Constraints lb2 ub2 w2 l2) = Constraints (lb1 `mplus` lb2)
-                                                      (ub1 `mplus` ub2)
-                                                      (w1  `mplus` w2)
-                                                      (l1  `mplus` l2)
 
+#if MIN_VERSION_base(4,11,0)
+-- starting with base-4.11, mappend definitions are redundant;
+-- at some point `mappend` will be removed from `Monoid`
+#elif MIN_VERSION_base(4,9,0)
+  mappend = (Sem.<>)
+#else
+    mappend appendConstraints
+#endif
 
 --------------------------------------------------------------------------------
 -- Output
